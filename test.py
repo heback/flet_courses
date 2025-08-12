@@ -1,139 +1,168 @@
 import flet as ft
 
-def make_tab(idx: int) -> ft.Tab:
-    return ft.Tab(
-        text=f"Tab {idx}",
-        icon=ft.Icons.LABEL,
-        content=ft.Container(
-            padding=12,
+def make_tile(idx: int) -> ft.Container:
+    """세로 ListView용 아이템"""
+    return ft.Container(
+        bgcolor=ft.Colors.BLUE_50 if idx % 2 == 0 else ft.Colors.AMBER_50,
+        border=ft.border.all(1, ft.Colors.GREY_300),
+        border_radius=8,
+        padding=12,
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.LIST, color=ft.Colors.BLUE_400),
+                ft.Text(f"항목 #{idx}", weight=ft.FontWeight.BOLD),
+                ft.Text("  ← ListView는 아이템을 계속 추가할 수 있어요.", color=ft.Colors.GREY_700),
+            ],
+            spacing=8,
+        ),
+    )
+
+def make_chip(idx: int) -> ft.Container:
+    """가로 스크롤용 작은 칩(가로 Row에 넣을 요소)"""
+    return ft.Container(
+        bgcolor=ft.Colors.CYAN_50,
+        border=ft.border.all(1, ft.Colors.CYAN_200),
+        border_radius=999,
+        padding=ft.padding.symmetric(horizontal=12, vertical=6),
+        content=ft.Row([ft.Icon(ft.Icons.TAG), ft.Text(f"Chip {idx}")], spacing=6),
+    )
+
+def main(page: ft.Page):
+    page.title = "ListView demo"
+    page.padding = 16
+    page.scroll = "auto"
+
+    # --- 상태 표시 ---
+    status = ft.Text(color=ft.Colors.GREY_700)
+
+    # --- 세로 ListView ---
+    lv = ft.ListView(
+        expand=1,          # 남은 공간을 채우도록 확장
+        spacing=8,         # 아이템 간 간격
+        padding=10,        # 내부 패딩
+        auto_scroll=True,  # 아이템 추가 시 자동으로 맨 아래로 스크롤
+    )
+
+    # 초기 아이템
+    counter = 0
+    for _ in range(5):
+        lv.controls.append(make_tile(counter))
+        counter += 1
+
+    # --- 가로 스크롤 패턴: Row(scroll=...) 사용 ---
+    chips_row = ft.Row(
+        controls=[make_chip(i) for i in range(1, 18)],
+        spacing=8,
+        scroll=ft.ScrollMode.AUTO,   # 가로로 넘겨 보기
+        # 필요하면 ALWAYS로 고정 스크롤바, HIDDEN으로 숨김
+    )
+
+    horizontal_scroller = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("가로 스크롤 예시 (Row(scroll=ft.ScrollMode.AUTO))"),
+                chips_row,
+            ],
+            spacing=8,
+        ),
+        padding=12,
+        border=ft.border.all(1, ft.Colors.GREY_300),
+        border_radius=12,
+        bgcolor=ft.Colors.GREY_50,
+    )
+
+    # --- 조작 컨트롤 ---
+    batch_size = 5
+    auto_scroll_switch = ft.Switch(label="auto_scroll", value=True)
+    spacing_slider = ft.Slider(min=0, max=24, divisions=12, value=8, label="{value}")
+    padding_slider = ft.Slider(min=0, max=32, divisions=16, value=10, label="{value}")
+
+    def add_one(e=None):
+        nonlocal counter
+        lv.controls.append(make_tile(counter))
+        counter += 1
+        status.value = f"아이템 1개 추가 → 총 {len(lv.controls)}개"
+        page.update()
+
+    def add_batch(e=None):
+        nonlocal counter
+        for _ in range(batch_size):
+            lv.controls.append(make_tile(counter))
+            counter += 1
+        status.value = f"아이템 {batch_size}개 추가 → 총 {len(lv.controls)}개"
+        page.update()
+
+    def clear_list(e=None):
+        nonlocal counter
+        lv.controls.clear()
+        counter = 0
+        status.value = "리스트 비움"
+        page.update()
+
+    def toggle_auto_scroll(e):
+        lv.auto_scroll = auto_scroll_switch.value
+        status.value = f"auto_scroll = {lv.auto_scroll}"
+        page.update()
+
+    def change_spacing(e):
+        lv.spacing = int(spacing_slider.value)
+        status.value = f"spacing = {lv.spacing}"
+        page.update()
+
+    def change_padding(e):
+        lv.padding = int(padding_slider.value)
+        status.value = f"padding = {lv.padding}"
+        page.update()
+
+    # 버튼/슬라이더 UI
+    controls_bar = ft.Row(
+        [
+            ft.ElevatedButton("Add 1", icon=ft.Icons.ADD, on_click=add_one),
+            ft.FilledButton(f"Add {batch_size}", icon=ft.Icons.ADD_CIRCLE, on_click=add_batch),
+            ft.OutlinedButton("Clear", icon=ft.Icons.DELETE, on_click=clear_list),
+            auto_scroll_switch,
+        ],
+        spacing=10,
+        wrap=True,
+    )
+    auto_scroll_switch.on_change = toggle_auto_scroll
+
+    sliders = ft.Row(
+        [
+            ft.Column([ft.Text("아이템 간 간격 (spacing)"), spacing_slider], spacing=6, width=260),
+            ft.Column([ft.Text("내부 패딩 (padding)"), padding_slider], spacing=6, width=260),
+        ],
+        wrap=True,
+        spacing=20,
+    )
+    spacing_slider.on_change = change_spacing
+    padding_slider.on_change = change_padding
+
+    # 레이아웃 배치
+    page.add(
+        ft.Text("ListView 작동 방식 데모", weight=ft.FontWeight.BOLD),
+        ft.Text("• 동적 추가 / auto_scroll / spacing & padding / expand / 가로 스크롤(Row(scroll))"),
+        ft.Divider(),
+        controls_bar,
+        sliders,
+        status,
+        ft.Container(
+            border=ft.border.all(1, ft.Colors.GREY_300),
+            border_radius=12,
+            padding=10,
             content=ft.Column(
                 [
-                    ft.Text(f"콘텐츠: Tab {idx}", weight=ft.FontWeight.BOLD),
-                    ft.TextField(label="이 탭만의 입력"),
+                    ft.Text("세로 ListView"),
+                    ft.Container(
+                        content=lv,
+                        height=300,   # 데모를 위해 고정 높이 → 내부가 스크롤됩니다.
+                    ),
                 ],
                 spacing=8,
             ),
         ),
-    )
-
-def main(page: ft.Page):
-    page.title = "Tabs toggle demo (rebuild)"
-    page.padding = 16
-
-    status = ft.Text(color=ft.Colors.GREY_700)
-
-    # 데모용: 헤더가 넘치도록 탭 여러 개 준비
-    tab_list = [make_tab(i) for i in range(1, 13)]
-    selected_index = 0
-    scrollable = True
-    anim_ms = 300
-
-    # Tabs를 담는 홀더: content를 새 Tabs로 교체하는 방식
-    tabs_holder = ft.Container(width=520)  # 폭 제한으로 헤더 넘치게
-    def build_tabs():
-        nonlocal selected_index
-        t = ft.Tabs(
-            tabs=tab_list,
-            selected_index=min(selected_index, len(tab_list)-1) if tab_list else 0,
-            scrollable=scrollable,
-            animation_duration=anim_ms,
-        )
-        # 선택 변경 표시
-        def on_change(e):
-            nonlocal selected_index
-            selected_index = t.selected_index
-            cur = t.tabs[selected_index] if 0 <= selected_index < len(t.tabs) else None
-            status.value = f"선택: index={selected_index}, text='{cur.text if cur else '-'}'"
-            page.update()
-        t.on_change = on_change
-        tabs_holder.content = t
-        page.update()
-        return t
-
-    tabs = build_tabs()  # 초기 구성
-
-    # 조작 함수들
-    def toggle_scrollable(e=None):
-        nonlocal scrollable, tabs
-        scrollable = not scrollable
-        status.value = f"scrollable = {scrollable}"
-        tabs = build_tabs()  # ▶ Tabs 재생성으로 즉시 반영
-
-    def toggle_anim(e=None):
-        nonlocal anim_ms, tabs, selected_index
-        anim_ms = 0 if anim_ms else 300
-        status.value = f"animation_duration = {anim_ms} ms"
-        tabs = build_tabs()  # ▶ 재생성
-
-        # 애니메이션 체감: 자동 전환(왕복)
-        if len(tab_list) >= 2:
-            cur = selected_index
-            tabs.selected_index = (cur + 1) % len(tab_list)
-            tabs.update()
-            tabs.selected_index = cur
-            tabs.update()
-
-    def add_tab(e=None):
-        nonlocal tabs, selected_index
-        new_idx = (len(tab_list) + 1)
-        tab_list.append(make_tab(new_idx))
-        selected_index = len(tab_list) - 1
-        tabs = build_tabs()
-
-    def remove_tab(e=None):
-        nonlocal tabs, selected_index
-        if not tab_list:
-            return
-        del tab_list[selected_index]
-        selected_index = max(0, min(selected_index, len(tab_list)-1))
-        tabs = build_tabs()
-
-    def rename_tab(e=None):
-        if not tab_list:
-            return
-        name_field.value = tab_list[selected_index].text
-        page.open(dlg)
-
-    def save_rename(e=None):
-        if not tab_list:
-            page.close(dlg)
-            return
-        new_name = (name_field.value or "").strip()
-        if new_name:
-            tab_list[selected_index].text = new_name
-            build_tabs()
-            status.value = f"이름 변경: '{new_name}'"
-        page.close(dlg)
-
-    name_field = ft.TextField(label="새 탭 이름", autofocus=True, width=260)
-    dlg = ft.AlertDialog(
-        modal=True,
-        title=ft.Text("탭 이름 변경"),
-        content=name_field,
-        actions=[ft.TextButton("취소", on_click=lambda e: page.close(dlg)),
-                 ft.FilledButton("저장", on_click=save_rename)],
-        actions_alignment=ft.MainAxisAlignment.END,
-    )
-
-    page.add(
-        ft.Text("Tabs 토글이 바로 보이게: 재생성 방식", weight=ft.FontWeight.BOLD),
-        ft.Text("• scrollable/animation 변경 시 Tabs를 재생성하여 헤더를 강제 리렌더링"),
-        ft.Divider(),
-        ft.Row(
-            [
-                ft.FilledButton("탭 추가", icon=ft.Icons.ADD, on_click=add_tab),
-                ft.OutlinedButton("선택 탭 삭제", icon=ft.Icons.DELETE, on_click=remove_tab),
-                ft.TextButton("이름 변경", icon=ft.Icons.DRIVE_FILE_RENAME_OUTLINE, on_click=rename_tab),
-                ft.TextButton("scrollable 토글", icon=ft.Icons.SWIPE, on_click=toggle_scrollable),
-                ft.TextButton("애니메이션 토글", icon=ft.Icons.ANIMATION, on_click=toggle_anim),
-            ],
-            spacing=10,
-            wrap=True,
-        ),
-        ft.Container(height=8),
-        status,
-        ft.Container(height=8),
-        tabs_holder,  # 여기에 항상 최신 Tabs가 들어갑니다
+        ft.Container(height=12),
+        horizontal_scroller,  # 가로 스크롤 예시
     )
 
 ft.app(target=main)
